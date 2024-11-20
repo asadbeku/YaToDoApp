@@ -1,6 +1,7 @@
-package uz.foursquare.todoapp.todolist_screen
+package uz.foursquare.todoapp.ui.todolist
 
 import android.content.Context
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -34,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -55,9 +57,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import uz.foursquare.todoapp.R
-import uz.foursquare.todoapp.todolist_screen.view_model.ToDoListViewModel
-import uz.foursquare.todoapp.types.Importance
-import uz.foursquare.todoapp.types.TodoItem
+import uz.foursquare.todoapp.ui.todolist.components.TodoItem
 import uz.foursquare.todoapp.ui.theme.ToDoAppTheme
 import uz.foursquare.todoapp.utils.convertMillisToDate
 
@@ -65,16 +65,17 @@ import uz.foursquare.todoapp.utils.convertMillisToDate
 @Composable
 fun ToDoListScreen(viewModel: ToDoListViewModel, navController: NavController, context: Context) {
     ToDoAppTheme {
-
         val backgroundColor = if (!isSystemInDarkTheme()) Color(0xFFF7F6F2) else Color(0xFF161618)
         val textColor = if (isSystemInDarkTheme()) Color.White else Color.Black
 
-        val scrollBehavior =
-            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+        val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
-        val isCollapsed =
-            remember { derivedStateOf { scrollBehavior.state.collapsedFraction > 0.5 } }
+        val isCollapsed = remember { derivedStateOf { scrollBehavior.state.collapsedFraction > 0.5 } }
         val completedTasks = viewModel.tasksStateFlow.collectAsState().value.count { it.done }
+
+        // Состояние для Snackbar
+        var showSnackbar by remember { mutableStateOf(false) }
+
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
@@ -105,19 +106,27 @@ fun ToDoListScreen(viewModel: ToDoListViewModel, navController: NavController, c
             ) {
                 MainContent(viewModel = viewModel, navController = navController)
 
-                viewModel.errorMessage.collectAsState().value?.let { errorMessage ->
+                // Snackbar с обработкой ошибки
+                if (showSnackbar) {
                     Snackbar(
                         action = {
                             Button(onClick = {
-                                viewModel.tasksStateFlow
+                                viewModel.loadTasks() // Перезагрузка задач
+                                showSnackbar = false
                             }) {
                                 Text("Повторить")
                             }
-                        }
-                    ) { Text("Something went wrong") }
+                        },
+                        modifier = Modifier.padding(8.dp)
+                    ) { Text(viewModel.errorMessage.collectAsState().value ?: "Что-то пошло не так") }
                 }
 
-
+                // Запускаем Snackbar при появлении ошибки
+                LaunchedEffect(viewModel.errorMessage.collectAsState().value) {
+                    if (viewModel.errorMessage.value != null) {
+                        showSnackbar = true
+                    }
+                }
             }
         }
     }
@@ -203,7 +212,8 @@ fun TaskList(tasks: List<TodoItem>, viewModel: ToDoListViewModel, navController:
                         navController.navigate("notesScreen/$it")
                     },
                     onCompleteChange = { isChecked ->
-                        val changedTask = task.copy(done = isChecked)
+                        val changedTask = task.copy(done = isChecked, color = task.color ?: "#FFFFFF") // Provide default color
+                        Log.d("ToDoListScreen", "Task changed: $changedTask")
                         viewModel.toggleTaskCompletion(changedTask)
                     })
             }

@@ -1,4 +1,4 @@
-package uz.foursquare.todoapp.note
+package uz.foursquare.todoapp.ui.note
 
 import android.util.Log
 import androidx.compose.foundation.clickable
@@ -35,6 +35,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,8 +48,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import uz.foursquare.todoapp.note.view_model.NotesViewModel
-import uz.foursquare.todoapp.types.TodoItem
+import uz.foursquare.todoapp.ui.todolist.components.TodoItem
 import uz.foursquare.todoapp.ui.theme.ToDoAppTheme
 import uz.foursquare.todoapp.utils.convertMillisToDate
 import java.util.Date
@@ -59,43 +59,42 @@ import java.util.UUID
 fun NotesScreen(navController: NavController, viewModel: NotesViewModel, taskId: String?) {
     var currentTodoItem by remember { mutableStateOf<TodoItem?>(null) }
 
-    if (taskId != null && taskId != "null" && taskId.isNotBlank()) {
-        viewModel.getNoteById(taskId)
+    // Получаем задачу, если taskId не null
+    LaunchedEffect(taskId) {
+        if (taskId != null && taskId != "null" && taskId.isNotBlank()) {
+            viewModel.getTaskById(taskId)
+        }
     }
 
     val task = viewModel.taskStateFlow.collectAsState().value
 
-    Log.d("NotesScreen", "NotesScreen: $task")
-
     val backgroundColor = if (isSystemInDarkTheme()) Color(0xFF252528) else Color.White
     val textColor = if (isSystemInDarkTheme()) Color.White else Color.Black
+
+    // Состояние для Snackbar
+    var showSnackbar by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Notes") },
                 navigationIcon = {
-                    IconButton(onClick = {
-                        navController.popBackStack()
-                    }) {
+                    IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
                     TextButton(onClick = {
-                        Log.d("NotesScreen", "Saving note: $taskId")
-                        if (!taskId.isNullOrEmpty()) {
-                            currentTodoItem?.let { viewModel.addNote(it) }
-                        } else {
-                            currentTodoItem?.let { viewModel.updateNote(it) }
+                        if (currentTodoItem != null) {
+                            if (taskId.isNullOrEmpty()) {
+                                viewModel.addTask(currentTodoItem!!)
+                            } else {
+                                viewModel.updateTask(currentTodoItem!!)
+                            }
+                            navController.popBackStack()
                         }
-                        navController.popBackStack()
                     }) {
-                        Text(
-                            "Сохранить",
-                            color = Color(0xFF007AFF),
-                            fontSize = 16.sp,
-                            modifier = Modifier
-                        )
+                        Text("Сохранить", color = Color(0xFF007AFF), fontSize = 16.sp)
                     }
                 }
             )
@@ -106,23 +105,31 @@ fun NotesScreen(navController: NavController, viewModel: NotesViewModel, taskId:
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            TodoInputFields(task) {
-                currentTodoItem = it
-            }
+            TodoInputFields(task) { currentTodoItem = it }
 
             val isDeleteEnabled = task != null
             DeleteContainer(isDeleteEnabled, viewModel, task, navController)
 
-            viewModel.errorMessage.collectAsState().value?.let { errorMessage ->
+            // Snackbar с обработкой ошибки
+            if (showSnackbar) {
                 Snackbar(
                     action = {
                         Button(onClick = {
-                            viewModel.getNoteById(taskId ?: "")
+                            viewModel.getTaskById(taskId ?: "") // Перезагрузка задачи
+                            showSnackbar = false
                         }) {
                             Text("Повторить")
                         }
-                    }
-                ) { Text("Something went wrong") }
+                    },
+                    modifier = Modifier.padding(8.dp)
+                ) { Text(viewModel.errorMessage.collectAsState().value ?: "Что-то пошло не так") }
+            }
+
+            // Запускаем Snackbar при появлении ошибки
+            LaunchedEffect(viewModel.errorMessage.collectAsState().value) {
+                if (viewModel.errorMessage.value != null) {
+                    showSnackbar = true
+                }
             }
         }
     }
@@ -213,7 +220,6 @@ fun TodoInputFields(task: TodoItem?, onSave: (TodoItem) -> Unit) {
         onSave(todoItem)
     }
 }
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -367,8 +373,9 @@ fun DeleteContainer(
                 .weight(1f)
                 .clickable {
                     Log.d("NotesScreen", "Deleting note: ${isDeleteEnabled && task != null}")
+                    Log.d("NotesScreen", "Deleting note: ${task?.id}")
                     if (isDeleteEnabled && task != null) {
-                        viewModel.deleteNote(task.id)
+                        viewModel.deleteTask(task.id)
                         navController.popBackStack()
                     }
                 }

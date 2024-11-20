@@ -1,7 +1,6 @@
-package uz.foursquare.todoapp.types
+package uz.foursquare.todoapp.ui.todolist.components
 
 import com.google.gson.annotations.SerializedName
-import java.util.Date
 
 
 data class TodoItem(

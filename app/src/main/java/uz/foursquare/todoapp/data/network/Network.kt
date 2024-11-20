@@ -1,4 +1,4 @@
-package uz.foursquare.todoapp.network
+package uz.foursquare.todoapp.data.network
 
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
@@ -10,7 +10,7 @@ object Network {
         .addInterceptor { chain ->
             val original = chain.request()
             val request = original.newBuilder()
-                .header(NetworkConstants.AUTHORIZATION_HEADER, "Bearer Thranduil")
+                .header("Authorization", "Bearer Thranduil")
                 .method(original.method, original.body)
                 .build()
             chain.proceed(request)
@@ -31,9 +31,4 @@ object Network {
         return retrofit.create(service)
     }
 
-}
-
-object NetworkConstants {
-    const val AUTHORIZATION_HEADER = "Authorization"
-    var LAST_KNOWN_REVISION_HEADER = ""
 }

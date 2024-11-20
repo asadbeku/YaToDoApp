@@ -1,20 +1,16 @@
-package uz.foursquare.todoapp.network
+package uz.foursquare.todoapp.data.network
 
 import com.google.gson.JsonObject
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
-import retrofit2.http.Field
-import retrofit2.http.FormUrlEncoded
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
-import uz.foursquare.todoapp.types.ToDoEditedResponse
-import uz.foursquare.todoapp.types.ToDoItemRequest
-import uz.foursquare.todoapp.types.ToDoItemsResponse
-import uz.foursquare.todoapp.types.TodoItem
+import uz.foursquare.todoapp.ui.todolist.components.ToDoEditedResponse
+import uz.foursquare.todoapp.ui.todolist.components.ToDoItemsResponse
 
 interface ApiService {
 
@@ -45,6 +41,4 @@ interface ApiService {
         @Header("X-Last-Known-Revision") lastKnownRevision: String,
         @Path("id") id: String
     ): Response<ToDoEditedResponse>
-
-
 }

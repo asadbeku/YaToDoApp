@@ -24,5 +24,4 @@ fun Long.convertStringToDate(): Date? {
     } catch (e: ParseException) {
         null
     }
-
 }
